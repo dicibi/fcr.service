@@ -21,7 +21,7 @@ app.config['TEMPORARY_FOLDER'] = TEMPORARY_FOLDER
 
 CORS(app)
 
-@app.route('/api/dataset/')
+@app.route('/api/dataset/', strict_slashes=False,)
 def getDataset():
     data = request.args
 
