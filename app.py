@@ -4,19 +4,11 @@ from werkzeug.utils import secure_filename
 import model
 import dbtool
 import math
-import logging
-from flask import Flask, json, jsonify, request, url_for
+from flask import Flask, jsonify, request
 from sqlalchemy.orm.session import Session
 from flask_cors import CORS
 from recognition_tool import train, predict
 from ulid import ULID
-
-
-logging.basicConfig(
-    filename='app.log',
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
 
 app = Flask(__name__)
 
@@ -253,7 +245,6 @@ def getLatestModel():
 
         return latestModel
 
-
 def jsonResponse(code = 200, message = "SUCCESS"):
     return jsonify({
         'code': code,
@@ -284,11 +275,6 @@ def getPaginationUrl(path, total, currentPage):
                 data['prev_page_url'] = None
 
     return data
-
-
-
-
-
 
 def getCurrentPath(path):
     return path[:-1]
