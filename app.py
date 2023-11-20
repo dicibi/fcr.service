@@ -20,10 +20,12 @@ logging.basicConfig(
 
 app = Flask(__name__)
 
-UPLOAD_FOLDER = 'stash'
+UPLOAD_FOLDER = 'dataset'
+TEMPORARY_FOLDER = 'temporary'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['TEMPORARY_FOLDER'] = TEMPORARY_FOLDER
 
 CORS(app)
 
@@ -62,53 +64,123 @@ def getDataset():
         session.close()
 
     pagination = getPaginationUrl(currentPath, total=totalDataset, currentPage=pageNumber)
-    response = {'status': 200, 'data': datasetDict, 'total': totalDataset, 'current_page': pageNumber, 'current_page_total': len(datasetDict)}
+    response = {'code': 200, 'data': datasetDict, 'total': totalDataset, 'current_page': pageNumber, 'current_page_total': len(datasetDict)}
 
     return jsonify(**response, **pagination)
 
-@app.route('/api/recognize', methods=['POST'])
+@app.route('/api/upload', methods=['POST'])
+def uploadFile():
+    if 'identifier' not in request.form:
+        return jsonResponse(code=422, message="Identifier not found!")
+
+    if 'file' not in request.files:
+        return jsonResponse(code=422, message="File not found!")
+
+    file = request.files['file']
+
+    response = {
+        'code': 200,
+        'message': 'SUCCESS',
+    }
+
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        
+        folder = request.form['identifier']
+
+        path = app.config['UPLOAD_FOLDER'] + '/' + folder
+
+        retrievedDataset = model.getDataset(folder)
+
+        if retrievedDataset is None:
+            with Session(dbtool.getEngine()) as session:
+                data = model.Dataset(name = folder)
+
+                session.add(data)
+
+                session.commit()
+
+                os.makedirs(path)
+
+                retrievedDataset = model.getDataset(folder)
+
+                session.close()
+
+        filepath = os.path.join(path, filename)
+
+        retrievedImage = model.getImage(
+            datasetId=retrievedDataset.id,
+            path=filepath
+        )
+
+        if retrievedImage is None:
+            with Session(dbtool.getEngine()) as session:
+                data = model.Image(
+                    name = filename,
+                    type = filename.split(".")[1],
+                    path = filepath,
+                    dataset_id = retrievedDataset.id
+                )
+
+                file.save(filepath)
+
+                session.add(data)
+
+                session.commit()
+
+                session.close()
+        else:
+            response['code'] = 422
+            response['message'] = 'Image exists'
+
+
+    return jsonify(response)
+
+
+@app.route('/api/verify', methods=['POST'])
 def storeImage():
     if 'file' not in request.files:
-        return responseMessage(status=422, message="File is empty!")
+        return jsonResponse(code=422, message="File is empty!")
 
     file = request.files['file']
 
     if file.filename == '':
-        return responseMessage(status=422, message="File is empty!")
+        return jsonResponse(code=422, message="File is empty!")
+
+    response = {
+        'code': 400,
+        'message': 'Something wrong!'
+    }
 
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        filepath = os.path.join(app.config['TEMPORARY_FOLDER'], filename)
         file.save(filepath)
 
         latestModel = getLatestModel()
 
         prediction = predict(filepath, model_path=latestModel.path)
-        logging.info(len(prediction))
 
         if len(prediction) == 0:
-            return jsonify({
-                'name': "unknown",
-                'location': "unknown",
+            response = {
+                'name': None,
+                'location': None,
+                'code': 200,
                 'model': latestModel.name,
-                'status': 200,
-                'message': "SUCCESS"
-            })
-
+                'message': None
+            }
         else:
-            return jsonify({
+            response = {
                 'name': prediction['name'],
                 'location': prediction['location'],
+                'code': 200,
                 'model': latestModel.name,
-                'status': 200,
                 'message': "SUCCESS"
-            })
+            }
 
+        os.remove(filepath)
 
-    return jsonify({
-        'status': 400,
-        'message': "SOMETHING WRONG"
-    })
+    return jsonify(response)
 
 @app.route('/api/models', methods={'GET'})
 def getModel():
@@ -144,7 +216,7 @@ def getModel():
         session.close()
 
     pagination = getPaginationUrl(currentPath, total=totalModel, currentPage=pageNumber)
-    response = {'status': 200, 'data': modelDict, 'total': totalModel, 'current_page': pageNumber, 'current_page_total': len(modelDict)}
+    response = {'code': 200, 'data': modelDict, 'total': totalModel, 'current_page': pageNumber, 'current_page_total': len(modelDict)}
 
     return jsonify(**response, **pagination)
 
@@ -167,7 +239,7 @@ def trainModel():
 
 
     return jsonify({
-        'status': 200,
+        'code': 200,
         'message': "SUCCESS"
     })
 
@@ -182,9 +254,9 @@ def getLatestModel():
         return latestModel
 
 
-def responseMessage(status = 200, message = "SUCCESS"):
+def jsonResponse(code = 200, message = "SUCCESS"):
     return jsonify({
-        'status': status,
+        'code': code,
         'message': message
     })
 

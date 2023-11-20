@@ -1,9 +1,8 @@
 import os
 import model
 import dbtool
-from ulid import ULID
+import train
 from sqlalchemy.orm.session import Session
-from recognition_tool import train
 
 def initializeDatabase():
     print("initialize database")
@@ -54,23 +53,7 @@ def seedDatabase():
                     session.commit()
 
                     session.close()
-
-
-    print("Train model")
-    modelPath = 'models/' + str(ULID()) + '.clf'
-    train('dataset', model_save_path=modelPath, n_neighbors=2)
-
-    with Session(dbtool.getEngine()) as session:
-        data = model.RecognitionModel(
-            name=modelPath.split('/')[1],
-            path=modelPath
-        )
-
-        session.add(data)
-
-        session.commit()
-
-        session.close()
+    train.run()
 
 
 if  __name__ == '__main__':
