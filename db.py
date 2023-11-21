@@ -3,6 +3,7 @@ import model
 import dbtool
 import train
 from sqlalchemy.orm.session import Session
+from sqlalchemy import text
 
 def initializeDatabase():
     print("initialize database")
@@ -55,6 +56,20 @@ def seedDatabase():
                     session.close()
     train.run()
 
+def isAnyTableExists():
+    with Session(dbtool.getEngine()) as session:
+        result = session.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='datasets'")).first()
+
+        session.close()
+
+    return result is not None
+
+def initDatabase():
+    if not isAnyTableExists():
+        initializeDatabase()
+        seedDatabase()
+    else:
+        print("Database already initialized")
 
 if  __name__ == '__main__':
     initializeDatabase()

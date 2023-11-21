@@ -3,11 +3,17 @@ import dbtool
 from ulid import ULID
 from recognition_tool import train
 from sqlalchemy.orm.session import Session
+import os
 
 def run():
     print("Train model")
 
     modelPath = 'models/' + str(ULID()) + '.clf'
+
+    dataset_dir = 'dataset'
+    if len(os.listdir(dataset_dir)) == 0:
+        print("The 'dataset' directory is empty. Cannot train model.")
+        return
 
     train('dataset', model_save_path=modelPath, n_neighbors=2)
 

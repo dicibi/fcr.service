@@ -9,8 +9,11 @@ from sqlalchemy.orm.session import Session
 from flask_cors import CORS
 from recognition_tool import train, predict
 from ulid import ULID
+from db import initDatabase
 
 app = Flask(__name__)
+
+initDatabase()
 
 UPLOAD_FOLDER = 'dataset'
 TEMPORARY_FOLDER = 'temporary'
@@ -280,4 +283,4 @@ def getCurrentPath(path):
     return path[:-1]
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False)

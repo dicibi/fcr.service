@@ -61,4 +61,3 @@ def getImage(datasetId, path):
         session.close()
 
     return result
-
