@@ -39,7 +39,8 @@ COPY *.py /app
 
 RUN mkdir -p /app/dataset && \
     mkdir -p /app/models && \
-    mkdir -p /app/temporary
+    mkdir -p /app/temporary && \
+    mkdir -p /app/db
 
 RUN rm -rf /var/lib/apt/lists/*  && \
     rm -rf /tmp/* /var/tmp/* && \
