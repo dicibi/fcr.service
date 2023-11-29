@@ -2,6 +2,10 @@ FROM python:latest
 
 LABEL org.opencontainers.image.source = "https://github.com/dicibi/fcr.service"
 
+WORKDIR /app
+
+COPY requirement.txt /app
+
 RUN apt-get -y update && apt-get install -y --fix-missing \
     build-essential \
     cmake \
@@ -23,28 +27,17 @@ RUN apt-get -y update && apt-get install -y --fix-missing \
     python3-numpy \
     software-properties-common \
     zip \
-    && apt-get clean && rm -rf /tmp/* /var/tmp/*
-
-RUN cd ~ && \
-    mkdir -p dlib && \
-    git clone -b 'v19.24.2' --single-branch https://github.com/davisking/dlib.git dlib/ && \
-    cd  dlib/ && \
-    python3 setup.py install
-
-WORKDIR /app
-COPY requirement.txt /app
-RUN pip install -r requirement.txt
+    && pip install -r requirement.txt \ 
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /tmp/* /var/tmp/* \
+    && rm -rf ~/* \
+    && rm -rf ~/.cache/pip \
+    && mkdir -p /app/dataset \
+    && mkdir -p /app/models \
+    && mkdir -p /app/temporary \
+    && mkdir -p /app/db
 
 COPY *.py /app
-
-RUN mkdir -p /app/dataset && \
-    mkdir -p /app/models && \
-    mkdir -p /app/temporary && \
-    mkdir -p /app/db
-
-RUN rm -rf /var/lib/apt/lists/*  && \
-    rm -rf /tmp/* /var/tmp/* && \
-    rm -rf ~/* && \
-    rm -rf ~/.cache/pip
 
 CMD [ "gunicorn", "-b", "0.0.0.0:5000", "app:app"]
