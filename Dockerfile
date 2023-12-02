@@ -6,7 +6,11 @@ WORKDIR /app
 
 COPY requirement.txt /app
 
-RUN apt-get -y update && apt-get install -y --fix-missing \
+COPY supervisor /etc/supervisor
+
+RUN export DEBIAN_FRONTEND=noninteractive \
+    && apt-get -y update \
+    && apt-get install -y --fix-missing \
     build-essential \
     cmake \
     gfortran \
@@ -27,6 +31,8 @@ RUN apt-get -y update && apt-get install -y --fix-missing \
     python3-numpy \
     software-properties-common \
     zip \
+    redis \
+    supervisor \
     && pip install -r requirement.txt \ 
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
@@ -40,4 +46,6 @@ RUN apt-get -y update && apt-get install -y --fix-missing \
 
 COPY *.py /app
 
-CMD [ "gunicorn", "-b", "0.0.0.0:5000", "app:app"]
+STOPSIGNAL SIGTERM
+
+CMD /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf

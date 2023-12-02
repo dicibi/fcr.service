@@ -1,26 +1,22 @@
 import model
 import dbtool
 from ulid import ULID
-from recognition_tool import train
 from sqlalchemy.orm.session import Session
-import os
+from task import trainModelRunner
 
 def run():
     print("Train model")
 
     modelPath = 'models/' + str(ULID()) + '.clf'
 
-    dataset_dir = 'dataset'
-    if len(os.listdir(dataset_dir)) == 0:
-        print("The 'dataset' directory is empty. Cannot train model.")
-        return
-
-    train('dataset', model_save_path=modelPath, n_neighbors=2)
+    task = trainModelRunner.delay(modelPath)
 
     with Session(dbtool.getEngine()) as session:
         data = model.RecognitionModel(
             name=modelPath.split('/')[1],
-            path=modelPath
+            path=modelPath,
+            status="PENDING",
+            task_id=task.id
         )
 
         session.add(data)

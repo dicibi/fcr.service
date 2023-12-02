@@ -1,4 +1,5 @@
 import os
+from celery.result import AsyncResult
 from sqlalchemy import desc, func
 from werkzeug.utils import secure_filename
 import model
@@ -7,9 +8,10 @@ import math
 from flask import Flask, jsonify, request
 from sqlalchemy.orm.session import Session
 from flask_cors import CORS
-from recognition_tool import train, predict
-from ulid import ULID
+from recognition_tool import predict
 from db import initDatabase
+from task import trainModelRunner
+from ulid import ULID
 
 app = Flask(__name__)
 
@@ -28,7 +30,7 @@ CORS(app)
 def getDataset():
     data = request.args
 
-    currentPath = getCurrentPath(request.path)
+    currentPath = request.path
 
     pageNumber = int(data.get('page', 1))
     pageSize = 10
@@ -181,7 +183,7 @@ def storeImage():
 def getModel():
     data = request.args
 
-    currentPath = getCurrentPath(request.path)
+    currentPath = request.path
 
     pageNumber = int(data.get('page', 1))
     pageSize = 10
@@ -201,6 +203,8 @@ def getModel():
             data = {
                 'id': result.id,
                 'name': result.name,
+                'status': result.status,
+                'task_id': result.task_id,
                 'created_at': result.created_at,
             }
 
@@ -218,12 +222,15 @@ def getModel():
 @app.route('/api/models/train', methods=['POST'])
 def trainModel():
     modelPath = 'models/' + str(ULID()) + '.clf'
-    train('dataset', model_save_path=modelPath, n_neighbors=2)
+
+    task = trainModelRunner.delay(modelPath)
 
     with Session(dbtool.getEngine()) as session:
         data = model.RecognitionModel(
             name=modelPath.split('/')[1],
-            path=modelPath
+            path=modelPath,
+            status="PENDING",
+            task_id=task.id
         )
 
         session.add(data)
@@ -232,11 +239,30 @@ def trainModel():
 
         session.close()
 
-
     return jsonify({
         'code': 200,
-        'message': "SUCCESS"
+        'task_id': task.id
     })
+
+@app.route('/api/models/train/<taskId>', methods=['GET'])
+def getTrainModelStatus(taskId):
+    task_result = AsyncResult(taskId)
+
+    result = {
+        "task_id": taskId,
+        "task_status": task_result.status,
+        "task_result": task_result.result
+    }
+
+    with Session(dbtool.getEngine()) as session:
+        trainedModel = session.query(model.RecognitionModel).filter(model.RecognitionModel.task_id == taskId).first()
+
+
+    result['name'] = trainedModel.name
+    result['status'] = trainedModel.status
+
+    return jsonify(result), 200
+
 
 def getLatestModel():
     with Session(dbtool.getEngine()) as session:
@@ -278,9 +304,6 @@ def getPaginationUrl(path, total, currentPage):
                 data['prev_page_url'] = None
 
     return data
-
-def getCurrentPath(path):
-    return path[:-1]
 
 if __name__ == '__main__':
     app.run(debug=False)

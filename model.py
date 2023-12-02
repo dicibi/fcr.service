@@ -40,6 +40,8 @@ class RecognitionModel(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(255))
     path: Mapped[str] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(255))
+    task_id: Mapped[int] = mapped_column(String(255))
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=func.now())
 
     def __repr__(self) -> str:
