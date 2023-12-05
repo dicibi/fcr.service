@@ -1,21 +1,16 @@
+from datetime import datetime
 import os
 from celery.result import AsyncResult
-from sqlalchemy import desc, func
 from werkzeug.utils import secure_filename
-import model
-import dbtool
+import model as BaseModel
 import math
 from flask import Flask, jsonify, request
-from sqlalchemy.orm.session import Session
 from flask_cors import CORS
 from recognition_tool import predict
-from db import initDatabase
 from task import trainModelRunner
 from ulid import ULID
 
 app = Flask(__name__)
-
-initDatabase()
 
 UPLOAD_FOLDER = 'dataset'
 TEMPORARY_FOLDER = 'temporary'
@@ -32,36 +27,34 @@ def getDataset():
 
     currentPath = request.path
 
+    limit = 10
     pageNumber = int(data.get('page', 1))
-    pageSize = 10
+    offset = (pageNumber - 1) * limit
 
-    offset = (pageNumber - 1) * pageSize
+    datasets = BaseModel.Dataset.find().page(offset, limit)
 
     datasetDict = []
 
-    with Session(dbtool.getEngine()) as session:
-        query = session.query(model.Dataset, func.count(model.Image.id).label('image_count'))
-        query = query.outerjoin(model.Image)
-        query = query.group_by(model.Dataset)
-        query = query.limit(pageSize).offset(offset)
+    for dataset in datasets:
+        data = {
+            'id': dataset.pk,
+            'name': dataset.name,
+            'image_count': BaseModel.getDatasetImageTotal(dataset.pk)
+        }
 
-        results = query.all()
+        datasetDict.append(data)
 
-        for result, image_count in results:
-            data = {
-                'id': result.id,
-                'name': result.name,
-                'image_count': image_count,
-            }
-
-            datasetDict.append(data)
-
-        totalDataset = session.query(model.Dataset).count()
-
-        session.close()
+    totalDataset = BaseModel.Dataset.find().count()
 
     pagination = getPaginationUrl(currentPath, total=totalDataset, currentPage=pageNumber)
-    response = {'code': 200, 'data': datasetDict, 'total': totalDataset, 'current_page': pageNumber, 'current_page_total': len(datasetDict)}
+
+    response = {
+        'code': 200,
+        'data': datasetDict,
+        'total': totalDataset,
+        'current_page': pageNumber,
+        'current_page_total': len(datasetDict)
+    }
 
     return jsonify(**response, **pagination)
 
@@ -87,49 +80,58 @@ def uploadFile():
 
         path = app.config['UPLOAD_FOLDER'] + '/' + folder
 
-        retrievedDataset = model.getDataset(folder)
+        dataset = BaseModel.findDataset(folder)
 
-        if retrievedDataset is None:
-            with Session(dbtool.getEngine()) as session:
-                data = model.Dataset(name = folder)
+        if not os.path.exists(path) and dataset:
+            os.makedirs(path)
+        elif os.path.exists(path) and dataset is None:
+            newDataset = BaseModel.Dataset(
+                name=folder
+            )
 
-                session.add(data)
+            newDataset.save()
 
-                session.commit()
+            dataset = BaseModel.findDataset(folder)
+        elif not os.path.exists(path) and dataset is None:
+            newDataset = BaseModel.Dataset(
+                name=folder
+            )
 
-                os.makedirs(path)
+            newDataset.save()
 
-                retrievedDataset = model.getDataset(folder)
+            os.makedirs(path)
 
-                session.close()
+            dataset = BaseModel.findDataset(folder)
 
         filepath = os.path.join(path, filename)
 
-        retrievedImage = model.getImage(
-            datasetId=retrievedDataset.id,
-            path=filepath
-        )
+        image = BaseModel.findImage(filepath)
 
-        if retrievedImage is None:
-            with Session(dbtool.getEngine()) as session:
-                data = model.Image(
-                    name = filename,
-                    type = filename.split(".")[1],
-                    path = filepath,
-                    dataset_id = retrievedDataset.id
-                )
+        if os.path.exists(filepath) and image is None:
+            newModel = BaseModel.Image(
+                name=filename,
+                image_type=filename.split(".")[1],
+                path=filepath,
+                dataset_id=dataset.pk,
+            )
 
-                file.save(filepath)
+            newModel.save()
+        elif not os.path.exists(filepath) and image:
+            file.save(filepath)
+        elif not os.path.exists(filepath) and image is None:
+            newModel = BaseModel.Image(
+                name=filename,
+                image_type=filename.split(".")[1],
+                path=filepath,
+                dataset_id=dataset.pk,
+            )
 
-                session.add(data)
+            newModel.save()
 
-                session.commit()
-
-                session.close()
+            file.save(filepath)
         else:
             response['code'] = 422
             response['message'] = 'Image exists'
-
 
     return jsonify(response)
 
@@ -146,7 +148,7 @@ def storeImage():
 
     response = {
         'code': 400,
-        'message': 'Something wrong!'
+        'message': 'Something wrong! Please try again!'
     }
 
     if file and allowed_file(file.filename):
@@ -155,6 +157,9 @@ def storeImage():
         file.save(filepath)
 
         latestModel = getLatestModel()
+
+        if latestModel is None:
+            return jsonify(response)
 
         prediction = predict(filepath, model_path=latestModel.path)
 
@@ -180,42 +185,44 @@ def storeImage():
     return jsonify(response)
 
 @app.route('/api/models', methods={'GET'})
-def getModel():
+def getModels():
     data = request.args
 
     currentPath = request.path
 
+    limit = 10
     pageNumber = int(data.get('page', 1))
-    pageSize = 10
+    offset = (pageNumber - 1) * limit
 
-    offset = (pageNumber - 1) * pageSize
+    models = BaseModel.RecognitionModel.find().sort_by('-created_at').page(offset, limit)
 
     modelDict = []
 
-    with Session(dbtool.getEngine()) as session:
-        query = session.query(model.RecognitionModel)
-        query = query.order_by(desc(model.RecognitionModel.created_at))
-        query = query.limit(pageSize).offset(offset)
+    for model in models:
+        if model.status == 'PENDING':
+            updateModelStatus(model.task_id)
 
-        results = query.all()
+        data = {
+            'id': model.pk,
+            'name': model.name,
+            'status': model.status,
+            'task_id': model.task_id,
+            'created_at': model.created_at,
+        }
 
-        for result in results:
-            data = {
-                'id': result.id,
-                'name': result.name,
-                'status': result.status,
-                'task_id': result.task_id,
-                'created_at': result.created_at,
-            }
+        modelDict.append(data)
 
-            modelDict.append(data)
-
-        totalModel = session.query(model.RecognitionModel).count()
-
-        session.close()
+    totalModel = BaseModel.RecognitionModel.find().count()
 
     pagination = getPaginationUrl(currentPath, total=totalModel, currentPage=pageNumber)
-    response = {'code': 200, 'data': modelDict, 'total': totalModel, 'current_page': pageNumber, 'current_page_total': len(modelDict)}
+
+    response = {
+        'code': 200,
+        'data': modelDict,
+        'total': totalModel,
+        'current_page': pageNumber,
+        'current_page_total': len(modelDict)
+    }
 
     return jsonify(**response, **pagination)
 
@@ -225,19 +232,15 @@ def trainModel():
 
     task = trainModelRunner.delay(modelPath)
 
-    with Session(dbtool.getEngine()) as session:
-        data = model.RecognitionModel(
-            name=modelPath.split('/')[1],
-            path=modelPath,
-            status="PENDING",
-            task_id=task.id
-        )
+    newModel = BaseModel.RecognitionModel(
+        name=modelPath.split('/')[1],
+        path=modelPath,
+        status="PENDING",
+        task_id=task.id,
+        created_at=datetime.now(),
+    )
 
-        session.add(data)
-
-        session.commit()
-
-        session.close()
+    newModel.save()
 
     return jsonify({
         'code': 200,
@@ -254,9 +257,9 @@ def getTrainModelStatus(taskId):
         "task_result": task_result.result
     }
 
-    with Session(dbtool.getEngine()) as session:
-        trainedModel = session.query(model.RecognitionModel).filter(model.RecognitionModel.task_id == taskId).first()
+    updateModelStatus(taskId)
 
+    trainedModel = BaseModel.RecognitionModel.find(BaseModel.RecognitionModel.task_id == taskId).first()
 
     result['name'] = trainedModel.name
     result['status'] = trainedModel.status
@@ -264,15 +267,16 @@ def getTrainModelStatus(taskId):
     return jsonify(result), 200
 
 
+def updateModelStatus(taskId):
+    trainedModel = BaseModel.RecognitionModel.find(BaseModel.RecognitionModel.task_id == taskId).first()
+
+    if os.path.exists(trainedModel.path):
+        trainedModel.status = 'SUCCESS'
+        trainedModel.save()
+
+
 def getLatestModel():
-    with Session(dbtool.getEngine()) as session:
-        query = session.query(model.RecognitionModel).order_by(desc(model.RecognitionModel.created_at))
-
-        latestModel = query.first()
-
-        session.close()
-
-        return latestModel
+    return BaseModel.getLatestModel()
 
 def jsonResponse(code = 200, message = "SUCCESS"):
     return jsonify({

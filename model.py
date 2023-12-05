@@ -1,65 +1,70 @@
 import datetime
-import dbtool
-from typing import List
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.orm.session import Session
-from sqlalchemy import DateTime, String, ForeignKey, func, select
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from redis_om.model.model import NotFoundError
+from redis_om import (
+    Field,
+    HashModel,
+    Migrator
+)
 
-class Base(DeclarativeBase):
-    pass
-
-class Dataset(Base):
-    __tablename__ = "datasets"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(255))
-
-    images: Mapped[List["Image"]] = relationship(back_populates="dataset")
+class Dataset(HashModel):
+    name: str = Field(index=True)
 
     def __repr__(self):
-        return f"Dataset(id={self.id!r}, name={self.name!r})"
-
-class Image(Base):
-    __tablename__ = "images"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(255))
-    type: Mapped[str] = mapped_column(String(255))
-    path: Mapped[str] = mapped_column(String(255))
-    dataset_id: Mapped[int] = mapped_column(ForeignKey("datasets.id"))
-
-    dataset: Mapped[Dataset] = relationship(back_populates="images")
+        return f"(id={self.pk!r}, name={self.name!r})"
+    
+class Image(HashModel):
+    name: str
+    image_type: str
+    path: str = Field(index=True)
+    dataset_id: str = Field(index=True)
 
     def __repr__(self) -> str:
-        return f"Image( id = {self.id}, name = {self.name}, type = {self.type}, path = {self.path})"
+        return f"(id = {self.pk}, name = {self.name}, type = {self.type}, path = {self.path}, dataset_id = {self.dataset_id})"
 
-class RecognitionModel(Base):
-    __tablename__ = "recognition_models"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(255))
-    path: Mapped[str] = mapped_column(String(255))
-    status: Mapped[str] = mapped_column(String(255))
-    task_id: Mapped[int] = mapped_column(String(255))
-    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=func.now())
+class RecognitionModel(HashModel):
+    name: str
+    path: str = Field(index=True)
+    status: str = Field(index=True)
+    task_id: str = Field(index=True)
+    created_at: datetime.datetime = Field(index=True, sortable=True)
 
     def __repr__(self) -> str:
-        return f"RecognitionModel( id = {self.id}, name = {self.name}, path = {self.path})"
+        return f"(id = {self.pk}, name = {self.name}, path = {self.path}, status = {self.status}, task_id = {self.task_id}), created_at = {self.created_at}"
 
-def getDataset(name):
-    with Session(dbtool.getEngine()) as session:
-        result = session.scalars(select(Dataset).where(Dataset.name == name)).first()
+def findDataset(name):
+    Migrator().run()
 
-        session.close()
+    try:
+        return Dataset.find(Dataset.name == name).first()
+    except NotFoundError as e:
+        return None
 
-    return result
-        
+def findImage(path):
+    Migrator().run()
 
-def getImage(datasetId, path):
-    with Session(dbtool.getEngine()) as session:
-        result = session.scalars(select(Image).where(Image.dataset_id == datasetId).where(Image.path == path)).first()
+    try:
+        return Image.find(Image.path == path).first()
+    except NotFoundError as e:
+        return None
 
-        session.close()
+def findRecognitionModel(path):
+    Migrator().run()
 
-    return result
+    try:
+        return RecognitionModel.find(RecognitionModel.path == path).first()
+    except NotFoundError as e:
+        return None
+
+def getLatestModel():
+    Migrator().run()
+
+    try:
+        return RecognitionModel.find(RecognitionModel.status == 'SUCCESS').sort_by("-created_at").first()
+    except NotFoundError:
+        return None
+
+def getDatasetImageTotal(datasetId):
+    Migrator().run()
+
+    return Image.find(Image.dataset_id == datasetId).count()
