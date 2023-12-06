@@ -9,6 +9,7 @@ from flask_cors import CORS
 from recognition_tool import predict
 from task import trainModelRunner
 from ulid import ULID
+from db import seedDatabase
 
 app = Flask(__name__)
 
@@ -20,6 +21,8 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['TEMPORARY_FOLDER'] = TEMPORARY_FOLDER
 
 CORS(app)
+
+seedDatabase()
 
 @app.route('/api/dataset/', strict_slashes=False,)
 def getDataset():

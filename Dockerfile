@@ -6,8 +6,6 @@ WORKDIR /app
 
 COPY requirement.txt /app
 
-COPY supervisor /etc/supervisor
-
 RUN export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y update \
     && apt-get install -y --fix-missing \
@@ -47,5 +45,9 @@ RUN export DEBIAN_FRONTEND=noninteractive \
 COPY *.py /app
 
 STOPSIGNAL SIGTERM
+
+COPY supervisor /etc/supervisor
+
+ENV REDIS_URL=redis://redis:6379/0
 
 CMD /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf
