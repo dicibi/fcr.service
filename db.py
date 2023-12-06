@@ -33,7 +33,5 @@ def seedDatabase():
                     dataset_id=dataset.pk,
                 ).save()
 
-    train.run()
-
 if  __name__ == '__main__':
     seedDatabase()
