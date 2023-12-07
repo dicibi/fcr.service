@@ -10,6 +10,7 @@ from recognition_tool import predict
 from task import trainModelRunner
 from ulid import ULID
 from db import seedDatabase
+from recognition_tool import rotate
 
 app = Flask(__name__)
 
@@ -158,6 +159,8 @@ def storeImage():
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config['TEMPORARY_FOLDER'], filename)
         file.save(filepath)
+
+        rotate(filepath)
 
         latestModel = getLatestModel()
 

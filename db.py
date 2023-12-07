@@ -1,6 +1,5 @@
 import os
 import model
-import train
 
 def seedDatabase():
     print("Seeding database using dataset")

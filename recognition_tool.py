@@ -2,6 +2,10 @@ import os
 import math
 import pickle
 import face_recognition
+from PIL import Image
+import face_recognition
+import numpy as np
+import cv2
 from sklearn import neighbors
 from face_recognition.face_recognition_cli import image_files_in_folder
 
@@ -88,4 +92,21 @@ def predict(X_img_path, knn_clf=None, model_path=None, distance_threshold=0.5):
             }
 
 
+def rotate(filepath):
+    image = Image.open(filepath)
 
+    for cycle in range(0, 4):
+        if cycle > 0:
+            image = image.rotate(90, expand=True)
+
+        image_copy = np.asarray(image)
+        image_gray = cv2.cvtColor(image_copy, cv2.COLOR_BGR2GRAY)
+
+        faces = face_recognition.face_locations(image_gray)
+
+        if len(faces) == 0:
+            continue
+
+        if cycle > 0:
+            image.save(filepath)
+            return cycle * 90
