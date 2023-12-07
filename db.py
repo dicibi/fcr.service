@@ -1,5 +1,8 @@
 import os
 import model
+from datetime import datetime
+
+MODEL_FOLDER = 'models'
 
 def seedDatabase():
     print("Seeding database using dataset")
@@ -31,6 +34,25 @@ def seedDatabase():
                     path=fullPath,
                     dataset_id=dataset.pk,
                 ).save()
+
+    validateRecognitionModels()
+
+def validateRecognitionModels():
+    for filename in os.listdir(MODEL_FOLDER):
+        if 'clf' in filename:
+            path = 'models/' + filename
+
+            relatedModel = model.findRecognitionModel(path)
+
+            if relatedModel:
+                continue
+
+            model.RecognitionModel(
+                name=filename,
+                path=path,
+                status="SUCCESS",
+                created_at=datetime.now(),
+            ).save()
 
 if  __name__ == '__main__':
     seedDatabase()

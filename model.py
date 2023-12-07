@@ -1,4 +1,5 @@
 import datetime
+from typing import Optional
 from redis_om.model.model import NotFoundError
 from redis_om import (
     Field,
@@ -26,7 +27,7 @@ class RecognitionModel(HashModel):
     name: str
     path: str = Field(index=True)
     status: str = Field(index=True)
-    task_id: str = Field(index=True)
+    task_id: Optional[str] = Field(index=True)
     created_at: datetime.datetime = Field(index=True, sortable=True)
 
     def __repr__(self) -> str:
