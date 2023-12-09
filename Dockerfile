@@ -50,4 +50,6 @@ COPY supervisor /etc/supervisor
 
 ENV REDIS_URL=redis://redis:6379/0
 
+ENV FCR_WORKERS=1
+
 CMD /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf
