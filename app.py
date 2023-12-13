@@ -4,7 +4,7 @@ from celery.result import AsyncResult
 from werkzeug.utils import secure_filename
 import model as BaseModel
 import math
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, make_response
 from flask_cors import CORS
 from recognition_tool import predict
 from task import trainModelRunner
@@ -157,7 +157,7 @@ def storeImage():
 
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config['TEMPORARY_FOLDER'], filename)
+        filepath = os.path.join(app.config['TEMPORARY_FOLDER'], str(ULID()) + '.' + filename.split('.')[1])
         file.save(filepath)
 
         rotate(filepath)
@@ -189,6 +189,83 @@ def storeImage():
         os.remove(filepath)
 
     return jsonify(response)
+
+@app.route('/api/replace', methods={'POST'})
+def replaceImage():
+    if 'file' not in request.files:
+        return make_response(jsonResponse(code=422, message="File is empty!"), 422)
+
+    file = request.files['file']
+
+    if file.filename == '':
+        return make_response(jsonResponse(code=422, message="File is empty!"), 422)
+
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+
+        folder = request.form['identifier']
+
+        path = app.config['UPLOAD_FOLDER'] + '/' + folder
+
+        dataset = BaseModel.findDataset(folder)
+
+        if not os.path.exists(path) and dataset:
+            os.makedirs(path)
+        elif os.path.exists(path) and dataset is None:
+            newDataset = BaseModel.Dataset(
+                name=folder
+            )
+
+            newDataset.save()
+
+            dataset = BaseModel.findDataset(folder)
+        elif not os.path.exists(path) and dataset is None:
+            newDataset = BaseModel.Dataset(
+                name=folder
+            )
+
+            newDataset.save()
+
+            os.makedirs(path)
+
+            dataset = BaseModel.findDataset(folder)
+
+        # find old file
+        old_file = os.listdir(path)[0]
+        old_filepath = os.path.join(path, old_file)
+        old_file_extension = old_file.split('.')[1]
+
+        temporary_filename = 'temporary.' + old_file_extension
+        temporary_path = os.path.join(path, temporary_filename)
+
+        image = BaseModel.findImage(old_filepath)
+
+        os.rename(old_filepath, temporary_path)
+
+        new_filename = str(ULID()) + '.' + filename.split('.')[1]
+        new_filepath = os.path.join(path, new_filename)
+
+        if image is None:
+            BaseModel.Image(
+                name=new_filename,
+                image_type=new_filename.split(".")[1],
+                path=new_filepath,
+                dataset_id=dataset.pk,
+            ).save()
+        else:
+            image.name = new_filename
+            image.path = new_filepath
+            image.save()
+
+        file.save(new_filepath)
+
+        rotate(new_filepath)
+
+        os.remove(temporary_path)
+
+    return make_response(jsonResponse(code=200, message="Berhasil update dataset"), 200)
+
+
 
 @app.route('/api/models', methods={'GET'})
 def getModels():
