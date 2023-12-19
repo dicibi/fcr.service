@@ -24,7 +24,7 @@ class Image(HashModel):
 
 
 class RecognitionModel(HashModel):
-    name: str
+    name: str = Field(index=True)
     path: str = Field(index=True)
     status: str = Field(index=True)
     task_id: Optional[str] = Field(index=True)
@@ -54,6 +54,14 @@ def findRecognitionModel(path):
 
     try:
         return RecognitionModel.find(RecognitionModel.path == path).first()
+    except NotFoundError as e:
+        return None
+
+def findRecognitionModelByName(name):
+    Migrator().run()
+
+    try:
+        return RecognitionModel.find(RecognitionModel.name == name).first()
     except NotFoundError as e:
         return None
 

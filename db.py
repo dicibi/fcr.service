@@ -42,7 +42,7 @@ def validateRecognitionModels():
         if 'clf' in filename:
             path = 'models/' + filename
 
-            relatedModel = model.findRecognitionModel(path)
+            relatedModel = model.findRecognitionModelByName(filename)
 
             if relatedModel:
                 continue
