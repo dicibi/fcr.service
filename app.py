@@ -360,6 +360,7 @@ def getTrainModelStatus(taskId):
 
     trainedModel = BaseModel.RecognitionModel.find(BaseModel.RecognitionModel.task_id == taskId).first()
 
+    result['code'] = 200;
     result['name'] = trainedModel.name
     result['status'] = trainedModel.status
 
