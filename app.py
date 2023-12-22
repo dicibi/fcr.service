@@ -228,39 +228,58 @@ def replaceImage():
             dataset = BaseModel.findDataset(folder)
 
         # find old file
-        old_file = os.listdir(path)[0]
-        old_filepath = os.path.join(path, old_file)
-        old_file_extension = old_file.split('.')[1]
+        files = os.listdir(path)
 
-        temporary_filename = 'temporary.' + old_file_extension
-        temporary_path = os.path.join(path, temporary_filename)
+        if len(files) > 0:
+            old_file = os.listdir(path)[0]
+            old_filepath = os.path.join(path, old_file)
+            old_file_extension = old_file.split('.')[1]
 
-        image = BaseModel.findImage(old_filepath)
+            temporary_filename = 'temporary.' + old_file_extension
+            temporary_path = os.path.join(path, temporary_filename)
 
-        os.rename(old_filepath, temporary_path)
+            image = BaseModel.findImage(old_filepath)
 
-        new_filename = str(ULID()) + '.' + filename.split('.')[1]
-        new_filepath = os.path.join(path, new_filename)
+            os.rename(old_filepath, temporary_path)
 
-        if image is None:
+            new_filename = str(ULID()) + '.' + filename.split('.')[1]
+            new_filepath = os.path.join(path, new_filename)
+
+            if image is None:
+                BaseModel.Image(
+                    name=new_filename,
+                    image_type=new_filename.split(".")[1],
+                    path=new_filepath,
+                    dataset_id=dataset.pk,
+                ).save()
+            else:
+                image.name = new_filename
+                image.path = new_filepath
+                image.save()
+
+            file.save(new_filepath)
+
+            rotate(new_filepath)
+
+            os.remove(temporary_path)
+        else:
+            new_filename = str(ULID()) + '.' + filename.split('.')[1]
+            new_filepath = os.path.join(path, new_filename)
+            print(new_filepath)
             BaseModel.Image(
                 name=new_filename,
                 image_type=new_filename.split(".")[1],
                 path=new_filepath,
                 dataset_id=dataset.pk,
             ).save()
-        else:
-            image.name = new_filename
-            image.path = new_filepath
-            image.save()
 
-        file.save(new_filepath)
+            file.save(new_filepath)
 
-        rotate(new_filepath)
+            rotate(new_filepath)
 
-        os.remove(temporary_path)
-
-    return make_response(jsonResponse(code=200, message="Berhasil update dataset"), 200)
+        return make_response(jsonResponse(code=200, message="Berhasil update dataset"), 200)
+    else:
+        return make_response(jsonResponse(code=422, message="Terjadi kesalahan!"), 422)
 
 
 
