@@ -30,8 +30,9 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     software-properties-common \
     zip \
     redis \
-    supervisor \
-    && pip install -v -r requirement.txt \ 
+    supervisor
+
+RUN pip install -v -r requirement.txt \ 
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /tmp/* /var/tmp/* \
