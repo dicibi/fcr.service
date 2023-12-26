@@ -1,4 +1,4 @@
-FROM python:latest
+FROM python:slim
 
 LABEL org.opencontainers.image.source = "https://github.com/dicibi/fcr.service"
 
@@ -12,26 +12,36 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     build-essential \
     cmake \
     gfortran \
-    git \
     wget \
     curl \
-    graphicsmagick \
-    libgraphicsmagick1-dev \
+    # graphicsmagick \
+    # libgraphicsmagick1-dev \
     libatlas-base-dev \
-    libavcodec-dev \
-    libavformat-dev \
-    libgtk2.0-dev \
+    # libgtk2.0-dev \
     libjpeg-dev \
     liblapack-dev \
-    libswscale-dev \
+    # libswscale-dev \
     pkg-config \
-    python3-dev \
-    python3-numpy \
     software-properties-common \
     zip \
-    redis \
     supervisor \
+    # build dlib
+    && cd ~ \
+    && wget https://github.com/davisking/dlib/archive/refs/tags/v19.24.2.tar.gz \
+    && tar -xvzf v19.24.2.tar.gz \
+    && rm v19.24.2.tar.gz \
+    && mv dlib-19.24.2 dlib \
+    && cd dlib && mkdir build && cd build \
+    && cmake -D DLIB_NO_GUI_SUPPORT=OFF .. \
+    && cmake --build . \
+    && cd .. \
+    && python3 setup.py install \
+    && cd .. \
+    && rm -rf dlib \
+    # build face_recognition
+    && cd /app \
     && pip install -v -r requirement.txt \ 
+    && apt-get autoremove -y build-essential cmake gfortran pkg-config \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /tmp/* /var/tmp/* \
