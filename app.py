@@ -7,7 +7,7 @@ import math
 from flask import Flask, jsonify, request, make_response
 from flask_cors import CORS
 from recognition_tool import predict
-from task import trainModelRunner
+from task import trainModelRunner, verify
 from ulid import ULID
 from recognition_tool import rotate
 
@@ -135,6 +135,40 @@ def uploadFile():
             response['message'] = 'Image exists'
 
     return jsonify(response)
+
+@app.route('/api/verify-queue/<identifier>', methods=['POST'])
+def verifyIdentifierQueue(identifier):
+    if 'publish_to' not in request.form:
+        return jsonResponse(code=422, message="Publish to is empty!")
+
+    if 'file' not in request.files:
+        return jsonResponse(code=422, message="File is empty!")
+    
+
+    file = request.files['file']
+
+    if file.filename == '':
+        return jsonResponse(code=422, message="File is empty!")
+
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['TEMPORARY_FOLDER'], str(ULID()) + '.' + filename.split('.')[1])
+        file.seek(0)
+        file.save(filepath)
+        file.close()
+
+    identifier = identifier.lstrip('/')
+
+    return jsonify({
+        'code': 200,
+        'message': 'SUCCESS',
+        'task_id': verify.delay(
+            filepath, 
+            identifier, 
+            request.form.get('publish_to'),
+            request.form.get('carrier')
+        ).id
+    })
 
 
 @app.route('/api/verify', methods=['POST'])
