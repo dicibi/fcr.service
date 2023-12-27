@@ -257,7 +257,9 @@ def replaceImage():
                 image.path = new_filepath
                 image.save()
 
+            file.seek(0)
             file.save(new_filepath)
+            file.close()
 
             rotate(new_filepath)
 
@@ -265,7 +267,7 @@ def replaceImage():
         else:
             new_filename = str(ULID()) + '.' + filename.split('.')[1]
             new_filepath = os.path.join(path, new_filename)
-            print(new_filepath)
+
             BaseModel.Image(
                 name=new_filename,
                 image_type=new_filename.split(".")[1],
@@ -273,7 +275,9 @@ def replaceImage():
                 dataset_id=dataset.pk,
             ).save()
 
+            file.seek(0)
             file.save(new_filepath)
+            file.close()
 
             rotate(new_filepath)
 
