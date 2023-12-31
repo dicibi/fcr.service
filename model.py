@@ -77,3 +77,8 @@ def getDatasetImageTotal(datasetId):
     Migrator().run()
 
     return Image.find(Image.dataset_id == datasetId).count()
+
+def getDatasetImages(datasetId):
+    Migrator().run()
+
+    return Image.find(Image.dataset_id == datasetId).all()

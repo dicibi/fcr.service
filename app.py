@@ -59,6 +59,28 @@ def getDataset():
 
     return jsonify(**response, **pagination)
 
+@app.route('/api/dataset/<identifier>', methods=['DELETE'])
+def clearDataset(identifier):
+    identifier = identifier.lstrip('/')
+
+    dataset = BaseModel.findDataset(identifier)
+
+    if dataset is None:
+        return make_response(jsonResponse(code=404, message="Dataset not found!"), 404)
+
+    images = BaseModel.getDatasetImages(dataset.pk)
+
+    for image in images:
+        if os.path.exists(image.path):
+            os.remove(image.path)
+        image.delete(image.pk)
+
+    dataset.delete(dataset.pk)
+    if os.path.exists(app.config['UPLOAD_FOLDER'] + '/' + identifier):
+        os.rmdir(app.config['UPLOAD_FOLDER'] + '/' + identifier)
+
+    return make_response(jsonResponse(code=200, message="Dataset Deleted"), 200)
+
 @app.route('/api/upload', methods=['POST'])
 def uploadFile():
     if 'identifier' not in request.form:
@@ -448,4 +470,4 @@ def getPaginationUrl(path, total, currentPage):
     return data
 
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=True)
