@@ -76,8 +76,15 @@ def clearDataset(identifier):
         image.delete(image.pk)
 
     dataset.delete(dataset.pk)
-    if os.path.exists(app.config['UPLOAD_FOLDER'] + '/' + identifier):
-        os.rmdir(app.config['UPLOAD_FOLDER'] + '/' + identifier)
+
+    folder_path = app.config['UPLOAD_FOLDER'] + '/' + identifier
+
+    if os.path.exists(folder_path):
+        files = os.listdir(folder_path)
+        for file in files:
+            os.remove(os.path.join(folder_path, file))
+
+        os.rmdir(folder_path)
 
     return make_response(jsonResponse(code=200, message="Dataset Deleted"), 200)
 
