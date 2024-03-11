@@ -29,8 +29,8 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     && cd ~ \
     && wget https://github.com/davisking/dlib/archive/refs/tags/v19.24.2.tar.gz \
     && tar -xvzf v19.24.2.tar.gz \
-    && rm v19.24.2.tar.gz \
-    && mv dlib-19.24.2 dlib \
+    && rm v19.24.3.tar.gz \
+    && mv dlib-19.24.3 dlib \
     && cd dlib && mkdir build && cd build \
     && cmake -D DLIB_NO_GUI_SUPPORT=OFF .. \
     && cmake --build . \
