@@ -27,8 +27,8 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     supervisor \
     # build dlib
     && cd ~ \
-    && wget https://github.com/davisking/dlib/archive/refs/tags/v19.24.2.tar.gz \
-    && tar -xvzf v19.24.2.tar.gz \
+    && wget https://github.com/davisking/dlib/archive/refs/tags/v19.24.3.tar.gz \
+    && tar -xvzf v19.24.3.tar.gz \
     && rm v19.24.3.tar.gz \
     && mv dlib-19.24.3 dlib \
     && cd dlib && mkdir build && cd build \
