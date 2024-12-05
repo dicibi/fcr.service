@@ -25,6 +25,7 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     software-properties-common \
     zip \
     supervisor \
+    python3-distutils \
     # build dlib
     && cd ~ \
     && wget https://github.com/davisking/dlib/archive/refs/tags/v19.24.6.tar.gz \
