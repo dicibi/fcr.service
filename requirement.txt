@@ -2,7 +2,7 @@ amqp==5.2.0
 annotated-types==0.7.0
 billiard==4.2.0
 blinker==1.6.3
-celery==5.3.6
+celery==5.4.0
 cffi==1.16.0
 click==8.1.7
 click-didyoumean==0.3.0
