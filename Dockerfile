@@ -1,6 +1,6 @@
 FROM python:slim
 
-LABEL org.opencontainers.image.source = "https://github.com/dicibi/fcr.service"
+LABEL org.opencontainers.image.source=https://github.com/dicibi/fcr.service
 
 WORKDIR /app
 
@@ -33,10 +33,17 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     && rm v19.24.6.tar.gz \
     && mv dlib-19.24.6 dlib \
     && cd dlib && mkdir build && cd build \
-    && cmake -D DLIB_NO_GUI_SUPPORT=OFF .. \
+    && if grep -q avx /proc/cpuinfo; then \
+        cmake -D DLIB_NO_GUI_SUPPORT=ON -D USE_AVX_INSTRUCTIONS=ON ..; \
+    else \
+        cmake -D DLIB_NO_GUI_SUPPORT=ON ..; \
+    fi \
     && cmake --build . \
     && cd .. \
-    && python3 setup.py install \
+    && python -m venv venv \
+    && pip install build \
+    && python -m build --wheel \
+    && pip install dist/$(ls dist) \
     && cd .. \
     && rm -rf dlib \
     # build face_recognition
@@ -64,4 +71,4 @@ ENV REDIS_URL=redis://redis:6379/0
 ENV FCR_WORKERS=1
 ENV FCR_TIMEOUT=50
 
-CMD /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf
+CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf"]
