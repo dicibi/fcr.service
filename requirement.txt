@@ -26,7 +26,7 @@ more-itertools==10.5.0
 numpy==2.2.1
 opencv-python-headless==4.10.0.84
 packaging==24.2
-pillow==11.0.0
+pillow==11.1.0
 prompt_toolkit==3.0.48
 pycparser==2.22
 pydantic==2.10.4
