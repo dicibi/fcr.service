@@ -35,7 +35,7 @@ python-dateutil==2.9.0.post0
 python-ulid==1.1.0
 redis==5.2.1
 redis-om==0.3.3
-scikit-learn==1.6.0
+scikit-learn==1.6.1
 scipy==1.15.1
 setuptools==75.8.0
 six==1.17.0
