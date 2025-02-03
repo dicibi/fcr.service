@@ -23,7 +23,7 @@ joblib==1.4.2
 kombu==5.4.2
 MarkupSafe==3.0.2
 more-itertools==10.5.0
-numpy==2.2.1
+numpy==2.2.2
 opencv-python-headless==4.10.0.84
 packaging==24.2
 pillow==11.1.0
