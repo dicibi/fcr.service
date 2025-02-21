@@ -30,7 +30,7 @@ pillow==11.1.0
 prompt_toolkit==3.0.50
 pycparser==2.22
 pydantic==2.10.4
-pydantic_core==2.27.2
+pydantic_core==2.29.0
 python-dateutil==2.9.0.post0
 python-ulid==1.1.0
 redis==5.2.1
